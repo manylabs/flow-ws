@@ -19,7 +19,7 @@ func (m MessageQueue) receive() []Message {
 	if err != nil {
 		log.Printf("err: %v", err)
 	}
-	// for x, msg := range messages {
+	// for _, msg := range messages {
 	// 	log.Printf("msg: %v", msg)
 
 	// }

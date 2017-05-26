@@ -7,14 +7,9 @@ import (
 	"strings"
 )
 
+type SessionPayload []map[string]string
+
 func manageWebSocket(w http.ResponseWriter, r *http.Request) {
-	// @todo check authentication in request
-	// get session info
-
-	// find key based on passed session info
-	key := findKeyFromRequest(r)
-	log.Printf("cookie: %v", key)
-
 	// Upgrade initial GET request to a websocket
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -24,9 +19,9 @@ func manageWebSocket(w http.ResponseWriter, r *http.Request) {
 	defer ws.Close()
 
 	// Register our new client
-	// Initialize WebSocketConnection client
+	// Initialize WebSocketConnection client with authentication
 	wsConn := new(WebSocketConnection)
-	wsConn.Init(ws)
+	wsConn.Init(r, ws)
 
 	// register a client with the socket sender (possible message recipient)
 	socketSender := new(SocketSender)
@@ -45,9 +40,6 @@ func manageWebSocket(w http.ResponseWriter, r *http.Request) {
 
 		// process incoming messages
 		processWebSocketMessage(message, wsConn)
-
-		// // Send the newly received message to the broadcast channel
-		// broadcast <- msg
 	}
 }
 
