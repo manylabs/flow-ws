@@ -65,9 +65,8 @@ func processWebSocketMessage(message Message, wsConn *WebSocketConnection) {
 			if folderPath == "self" || folderPath == "[self]" {
 				folderID = string(wsConn.ControllerID)
 			} else if strings.Contains(folderPath, "strip") { // @todo how to do hasattr in GO?  what does this check for exactly?
-				// @todo implement find_resource
-				// resource := findResource(folderID)
-				// folderId = resource.ID
+				resource := findResource(folderPath)
+				folderID = string(resource.ID)
 			}
 
 			if wsConn.hasAccess(folderID) {
@@ -86,7 +85,7 @@ func processWebSocketMessage(message Message, wsConn *WebSocketConnection) {
 				log.Printf("message to folder: %v", folderName)
 			}
 			if strings.HasPrefix(folderName, "/") {
-				// @todo fill in logic
+				// @todo fill in logic find_resource
 			}
 		} else if wsConn.ControllerID > 0 {
 			folderID := wsConn.ControllerID

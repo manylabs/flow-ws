@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"gopkg.in/gorp.v1"
 
@@ -35,6 +36,31 @@ func initializeDatabase() *gorp.DbMap {
 	// @todo need to define dialect basted on GORP Database type
 	dbmap := &gorp.DbMap{Db: db, Dialect: gorp.SqliteDialect{}}
 	return dbmap
+}
+
+type ControllerStatus struct {
+	ID                       int    `json:"id" db:"id"`
+	LastConnectTimestamp     string `json:"last_connect_timestamp" db:"last_connect_timestamp"`
+	ClientVersion            string `json:"client_version" db:"client_version"`
+	WebSocketConnected       bool   `json:"web_socket_connected" db:"web_socket_connected"`
+	LastWatchdogTimestamp    string `json:"last_watchdog_timestamp" db:"last_watchdog_timestamp"`
+	WatchdogNotificationSend bool   `json:"watchdog_notification_sent" db:"watchdog_notification_sent"`
+	Attributes               string `json:"attributes" db:"attributes"`
+}
+
+type Resource struct {
+	ID             int    `json:"id" db:"id"`
+	LastRevisionID int    `json:"last_revision_id" db:"last_revision_id"`
+	OrganizationID int    `json:"organization_id" db:"organization_id"`
+	ParentID       int    `json:"parent_id" db:"parent_id"`
+	Name           string `json:"name" db:"name"`
+	Deleted        bool   `json:"deleted" db:"deleted"`
+}
+type OrganizationUser struct {
+	ID             int  `json:"id" db:"id"`
+	OrganizationID int  `json:"organization_id" db:"organization_id"`
+	UserID         int  `json:"user_id" db:"user_id"`
+	IsAdmin        bool `json:"is_admin" db:"is_admin"`
 }
 
 // Message Define our message object
@@ -94,7 +120,7 @@ func (wsConn *WebSocketConnection) Init(r *http.Request, ws *websocket.Conn) {
 	// wsConn.UserID = 4
 
 	// Authentication - either key based via basic http auth, or session based with user_id in session cookie
-	_, basicAuthPassword, basicAuthOk := r.BasicAuth()
+	basicAuthUsername, basicAuthPassword, basicAuthOk := r.BasicAuth()
 	sessionPayloadMap := getSessionCookieFromRequest(r)
 	if basicAuthOk == true {
 		key := findKey(basicAuthPassword) // key is provided as HTTP basic auth password
@@ -106,15 +132,21 @@ func (wsConn *WebSocketConnection) Init(r *http.Request, ws *websocket.Conn) {
 		wsConn.UserID = key.AccessAsUserID
 		wsConn.AuthMethod = "key"
 		if wsConn.ControllerID > 0 {
-			// @todo port over persisting controller status back to db
-			// if ws_conn.controller_id:
-			// 		try:
-			// 				controller_status = ControllerStatus.query.filter(ControllerStatus.id == ws_conn.controller_id).one()
-			// 				controller_status.last_connect_timestamp = datetime.datetime.utcnow()
-			// 				controller_status.client_version = auth.username  # client should pass version in HTTP basic auth user name
-			// 				db.session.commit()
-			// 		except NoResultFound:
-			// 				print 'warning: unable to find controller status record'
+			dbmap := initializeDatabase()
+			defer dbmap.Db.Close()
+			var controllerStatus ControllerStatus
+			err := dbmap.SelectOne(&controllerStatus, "select * from controller_status where id=:controller_status_id", map[string]interface{}{
+				"controller_status_id": wsConn.ControllerID,
+			})
+			if err != nil {
+				log.Printf("warning: unable to find controller status record: %v", err)
+			}
+			controllerStatus.LastConnectTimestamp = time.Now().Format(time.RFC850)
+			controllerStatus.ClientVersion = basicAuthUsername
+			_, err = dbmap.Update(&controllerStatus)
+			if err != nil {
+				log.Printf("warning: unable to update controller status record: %v", err)
+			}
 		}
 
 	} else if userID, ok := sessionPayloadMap["user_id"].(int); ok {
@@ -126,9 +158,24 @@ func (wsConn *WebSocketConnection) Init(r *http.Request, ws *websocket.Conn) {
 func (wsConn *WebSocketConnection) hasAccess(FolderID string) bool {
 	access := false
 	if wsConn.ControllerID > 0 {
-		// @todo fill in logic
+		access = (string(wsConn.ControllerID) == FolderID)
 	} else {
-		// @todo fill in logic
+		dbmap := initializeDatabase()
+		defer dbmap.Db.Close()
+
+		resource := Resource{}
+		organizationUser := OrganizationUser{}
+		err := dbmap.SelectOne(&resource, "select * from resource where id=:folder_id AND deleted = false", map[string]interface{}{
+			"folder_id": FolderID,
+		})
+
+		err = dbmap.SelectOne(&organizationUser, "select * from organization_users where user_id=:user_id AND organization_id=:org_id", map[string]interface{}{
+			"user_id": wsConn.UserID,
+			"org_id":  resource.OrganizationID,
+		})
+		if err == nil {
+			access = true
+		}
 	}
 	return access
 }
@@ -142,9 +189,6 @@ func (msg *Message) Scan(value interface{}) error {
 func main() {
 	// // Configure websocket route
 	http.HandleFunc("/api/v1/websocket", manageWebSocket)
-
-	// // Start listening for incoming chat messages
-	// go handleMessages()
 
 	go setUpSocketSender()
 

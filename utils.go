@@ -13,6 +13,7 @@ import (
 	"time"
 )
 
+// NullTime is taken from sql/pq
 type NullTime struct {
 	Time  time.Time
 	Valid bool // Valid is true if Time is not NULL
@@ -79,4 +80,38 @@ func findKey(keyText string) Key {
 	}
 	// @todo check key authentication and only return key if true
 	return key
+}
+
+func findResource(fileName string) Resource {
+	fileName = strings.Trim(fileName, "/")
+	parts := strings.Split(fileName, "/")
+	parent := Resource{}
+
+	dbmap := initializeDatabase()
+	defer dbmap.Db.Close()
+
+	resource := Resource{}
+	for part := range parts {
+		if (parent != Resource{}) {
+			err := dbmap.SelectOne(&resource, "select * from resource where parent_id=:parent_id AND name=:=name AND deleted = false", map[string]interface{}{
+				"parent_id": parent.ID,
+				"name":      part,
+			})
+			if err != nil {
+				log.Printf("findResource err: %v", err)
+			}
+		} else {
+			err := dbmap.SelectOne(&resource, "select * from resource where parent_id=:parent_id AND name=:=name AND deleted = false", map[string]interface{}{
+				"parent_id": nil,
+				"name":      part,
+			})
+			if err != nil {
+				log.Printf("findResource err: %v", err)
+			}
+		}
+		// need to handle when no results found
+		// need to handle when more than 1 resource.. and report multiple results found.
+		parent = resource
+	}
+	return parent
 }
