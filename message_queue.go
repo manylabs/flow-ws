@@ -1,6 +1,9 @@
 package main
 
-import "log"
+import (
+	"encoding/json"
+	"log"
+)
 
 type MessageQueue struct {
 	lastMessageID  int
@@ -15,17 +18,43 @@ func (m MessageQueue) receive() []Message {
 	dbmap := initializeDatabase()
 	defer dbmap.Db.Close()
 	var messages []Message
-	_, err := dbmap.Select(&messages, "select * from messages order by id limit 0, 1")
-	if err != nil {
-		log.Printf("err: %v", err)
-	}
-	// for _, msg := range messages {
-	// 	log.Printf("msg: %v", msg)
 
-	// }
+	if m.lastMessageID > 0 {
+		_, err := dbmap.Select(&messages, "select * from messages WHERE id > :last_message_id ORDER BY id", map[string]interface{}{
+			"last_message_id": m.lastMessageID,
+		})
+		if err != nil {
+			log.Printf("err: %v", err)
+		}
+	} else {
+		_, err := dbmap.Select(&messages, "select * from messages WHERE id > :start_timestamp ORDER BY id", map[string]interface{}{
+			"start_timestamp": m.startTimeStamp,
+		})
+		if err != nil {
+			log.Printf("err: %v", err)
+		}
+	}
+	if len(messages) > 0 {
+		m.lastMessageID = messages[len(messages)-1].ID
+	}
 	return messages
 }
 
-func (m MessageQueue) add(folderID string, messageType string, parameters string, senderControllerID string, senderUserID string, timestamp string) {
+func (m MessageQueue) add(folderID int, messageType string, parameters string, senderControllerID int, senderUserID int, timestamp string) {
 	// @todo persist to db
+	message := Message{}
+	message.SenderControllerID = senderControllerID
+	message.SenderUserID = senderUserID
+	message.Timestamp = timestamp
+	message.Type = messageType
+	message.FolderID = folderID
+	message.Parameters, _ = json.Marshal(parameters)
+	// @todo add parameters
+	// @tood if no timestamp
+	dbmap := initializeDatabase()
+	defer dbmap.Db.Close()
+	err := dbmap.Insert(&message)
+	if err != nil {
+		log.Printf("MessageQueue.add err: %v", err)
+	}
 }

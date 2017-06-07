@@ -53,7 +53,7 @@ func (s SocketSender) sendError(wsConn *WebSocketConnection, messageText string)
 // this function sits in a loop, waiting for messages that need to be sent out to subscribers)
 func (s SocketSender) run() {
 	for {
-		time.Sleep(2 * time.Second)
+		time.Sleep(1 * time.Second)
 		mq := MessageQueue{}
 		messages := mq.receive()
 		for _, message := range messages {
