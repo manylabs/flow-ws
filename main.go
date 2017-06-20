@@ -119,7 +119,7 @@ type WebSocketConnection struct {
 	ControllerID  int             `json:"controller_id"`
 	AuthMethod    string          `json:"auth_method"`
 	Connected     int             `json:"connected"`
-	Subscriptions map[string]bool `json:"subscription"`
+	Subscriptions map[int]bool    `json:"subscription"`
 }
 
 func (wsConn *WebSocketConnection) Init(r *http.Request, ws *websocket.Conn) {
@@ -162,10 +162,10 @@ func (wsConn *WebSocketConnection) Init(r *http.Request, ws *websocket.Conn) {
 	}
 }
 
-func (wsConn *WebSocketConnection) hasAccess(FolderID string) bool {
+func (wsConn *WebSocketConnection) hasAccess(FolderID int) bool {
 	access := false
 	if wsConn.ControllerID > 0 {
-		access = (string(wsConn.ControllerID) == FolderID)
+		access = (wsConn.ControllerID == FolderID)
 	} else {
 		dbmap := initializeDatabase()
 		defer dbmap.Db.Close()

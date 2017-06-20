@@ -63,12 +63,12 @@ func processWebSocketMessage(message Message, wsConn *WebSocketConnection) {
 				folderPath = subscription.FolderID
 			}
 
-			folderID := folderPath
+			folderID, _ := strconv.Atoi(folderPath)
 			if folderPath == "self" || folderPath == "[self]" {
-				folderID = string(wsConn.ControllerID)
+				folderID = wsConn.ControllerID
 			} else if strings.Contains(folderPath, "strip") { // @todo how to do hasattr in GO?  what does this check for exactly?
 				resource := findResource(folderPath)
-				folderID = string(resource.ID)
+				folderID = resource.ID
 			}
 
 			if wsConn.hasAccess(folderID) {
@@ -80,30 +80,37 @@ func processWebSocketMessage(message Message, wsConn *WebSocketConnection) {
 		}
 		break
 	default:
-		folderID := ""
+		var folderID int
 		if message.Folder != "" {
 			folderName := message.Folder
 			if messageDebug {
 				log.Printf("message to folder: %v", folderName)
 			}
 			if strings.HasPrefix(folderName, "/") {
-				// @todo fill in logic find_resource
+				if messageDebug {
+					log.Printf("message to folder name: %v", folderName)
+				}
+				folder := findResource(folderName)
+				if folder.ID > 0 {
+					folderID = folder.ID
+					if messageDebug {
+						log.Printf("message to folder id: %v", folderID)
+					}
+				} else {
+					log.Printf("message to unknown folder: (%v)", folderName)
+				}
 			}
 		} else if wsConn.ControllerID > 0 {
-			folderID := wsConn.ControllerID
-			log.Printf("folderID = ControllerID", folderID)
+			folderID = wsConn.ControllerID
 		} else {
 			log.Printf("message (%v) without folder or controller; discarding", messageType)
 		}
 
 		if wsConn.hasAccess(folderID) {
-			// add to message queue
-			// @todo does this need to be concurrent? It's a single insert.  Concurrent in Python / Flask app using a gevent for message_queue.add
-
 			timestamp := time.Now().Format(time.RFC850)
-			folderIDInt, _ := strconv.Atoi(folderID)
 			mq := new(MessageQueue)
-			mq.add(folderIDInt, messageType, message.Parameters, wsConn.ControllerID, wsConn.UserID, timestamp)
+			// @todo does this need to be concurrent? It's a single insert.  Concurrent in Python / Flask app using a gevent for message_queue.add
+			go mq.add(folderID, messageType, message.Parameters, wsConn.ControllerID, wsConn.UserID, timestamp)
 		}
 
 		break

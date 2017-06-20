@@ -92,7 +92,7 @@ func ClientIsSubscribed(message Message, wsConn *WebSocketConnection) bool {
 			return false
 		}
 	}
-	if _, ok := wsConn.Subscriptions[string(message.FolderID)]; ok {
+	if _, ok := wsConn.Subscriptions[message.FolderID]; ok {
 		return ok
 	}
 	return false
