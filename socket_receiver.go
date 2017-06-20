@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
+	"time"
 )
 
 type SessionPayload []map[string]string
@@ -95,12 +97,13 @@ func processWebSocketMessage(message Message, wsConn *WebSocketConnection) {
 		}
 
 		if wsConn.hasAccess(folderID) {
-			var parameters MessageParameters
-			json.Unmarshal([]byte(message.Parameters), &parameters)
-
 			// add to message queue
-			// mq := new(MessageQueue)
-			// mq.add(folderID, messageType, parameters)
+			// @todo does this need to be concurrent? It's a single insert.  Concurrent in Python / Flask app using a gevent for message_queue.add
+
+			timestamp := time.Now().Format(time.RFC850)
+			folderIDInt, _ := strconv.Atoi(folderID)
+			mq := new(MessageQueue)
+			mq.add(folderIDInt, messageType, message.Parameters, wsConn.ControllerID, wsConn.UserID, timestamp)
 		}
 
 		break

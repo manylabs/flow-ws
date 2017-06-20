@@ -12,6 +12,7 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/websocket"
+	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -33,8 +34,15 @@ func initializeDatabase() *gorp.DbMap {
 	if err != nil {
 		log.Printf("err %v", err)
 	}
-	// @todo need to define dialect basted on GORP Database type
+
+	// defaults to sqllite
 	dbmap := &gorp.DbMap{Db: db, Dialect: gorp.SqliteDialect{}}
+	if GetConfigVar("gorpDatabaseType") == "mymysql" {
+		dbmap = &gorp.DbMap{Db: db, Dialect: gorp.MySQLDialect{}}
+	} else if GetConfigVar("gorpDatabaseType") == "postgresql" {
+		dbmap = &gorp.DbMap{Db: db, Dialect: gorp.PostgresDialect{}}
+	}
+
 	return dbmap
 }
 
@@ -115,9 +123,8 @@ type WebSocketConnection struct {
 }
 
 func (wsConn *WebSocketConnection) Init(r *http.Request, ws *websocket.Conn) {
-	// @todo populate appropriately from authenticated user data
+
 	wsConn.WS = ws
-	// wsConn.UserID = 4
 
 	// Authentication - either key based via basic http auth, or session based with user_id in session cookie
 	basicAuthUsername, basicAuthPassword, basicAuthOk := r.BasicAuth()

@@ -19,7 +19,7 @@ Once rerun is installed
 rerun flow-ws
 ```
 
-Alternatively: if development on a Windows environment
+Alternatively: use full path to rerun if $GOPATH/bin is not set in environment variables
 
 ```
 /path/to/rerun.exe flow-ws
@@ -36,8 +36,14 @@ config.json contains:
 
 {
   "vars": {
-    "SQLLitePath":  "/path/to/rhizo.db",
+    "gorpDatabaseType":  "sqlite3",
+    "gorpDatabaseUri":  "E:/projects/rhizo-server/main/rhizo.db",
     "debugMode":  "false",
     "listenPort": ":8000"
   }
 }
+
+// gorpDatabaseType = "mysql", "sqllite3", "postgresql".  This is the driver type
+// gorpDatabaseUri = authenticated string to connect to database, or path to database if run on a socket connection.  This is specific to the DB driver used.  See https://github.com/go-sql-driver/mysql#examples for mysql examples of TCP and socket connections.
+
+Included "database/sql" drivers are "mysql", "sqllite3", "postgresql".

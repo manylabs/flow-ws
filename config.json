@@ -1,0 +1,8 @@
+{
+  "vars": {
+    "gorpDatabaseType":  "sqlite3",
+    "gorpDatabaseUri":  "E:/projects/rhizo-server/main/rhizo.db",
+    "debugMode":  "false",
+    "listenPort": ":8000"
+  }
+}

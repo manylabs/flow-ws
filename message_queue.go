@@ -40,7 +40,7 @@ func (m MessageQueue) receive() []Message {
 	return messages
 }
 
-func (m MessageQueue) add(folderID int, messageType string, parameters string, senderControllerID int, senderUserID int, timestamp string) {
+func (m MessageQueue) add(folderID int, messageType string, parameters json.RawMessage, senderControllerID int, senderUserID int, timestamp string) {
 	// @todo persist to db
 	message := Message{}
 	message.SenderControllerID = senderControllerID
