@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -62,8 +63,10 @@ func processWebSocketMessage(message Message, wsConn *WebSocketConnection) {
 			if len(folderPath) == 0 {
 				folderPath = subscription.FolderID
 			}
+			// @todo clean this up a bit.  Do we need to unmarshal to strings for the params?
+			folderIDInt, err := strconv.Atoi(folderPath)
+			folderID := sql.NullInt64{Int64: int64(folderIDInt), Valid: err == nil}
 
-			folderID, _ := strconv.Atoi(folderPath)
 			if folderPath == "self" || folderPath == "[self]" {
 				folderID = wsConn.ControllerID
 			} else if strings.Contains(folderPath, "strip") { // @todo how to do hasattr in GO?  what does this check for exactly?
@@ -73,14 +76,14 @@ func processWebSocketMessage(message Message, wsConn *WebSocketConnection) {
 
 			if wsConn.hasAccess(folderID) {
 				if messageDebug {
-					log.Printf("subscribe folder: %s (%d)", folderPath, folderID)
+					log.Printf("subscribe folder: %s (%v)", folderPath, folderID)
 				}
 				wsConn.Subscriptions[folderID] = true
 			}
 		}
 		break
 	default:
-		var folderID int
+		var folderID sql.NullInt64
 		if message.Folder != "" {
 			folderName := message.Folder
 			if messageDebug {
@@ -91,7 +94,7 @@ func processWebSocketMessage(message Message, wsConn *WebSocketConnection) {
 					log.Printf("message to folder name: %v", folderName)
 				}
 				folder := findResource(folderName)
-				if folder.ID > 0 {
+				if folder.ID.Valid {
 					folderID = folder.ID
 					if messageDebug {
 						log.Printf("message to folder id: %v", folderID)
@@ -100,7 +103,7 @@ func processWebSocketMessage(message Message, wsConn *WebSocketConnection) {
 					log.Printf("message to unknown folder: (%v)", folderName)
 				}
 			}
-		} else if wsConn.ControllerID > 0 {
+		} else if wsConn.ControllerID.Valid {
 			folderID = wsConn.ControllerID
 		} else {
 			log.Printf("message (%v) without folder or controller; discarding", messageType)

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"log"
 )
@@ -40,7 +41,7 @@ func (m MessageQueue) receive() []Message {
 	return messages
 }
 
-func (m MessageQueue) add(folderID int, messageType string, parameters json.RawMessage, senderControllerID int, senderUserID int, timestamp string) {
+func (m MessageQueue) add(folderID sql.NullInt64, messageType string, parameters json.RawMessage, senderControllerID sql.NullInt64, senderUserID sql.NullInt64, timestamp string) {
 	// @todo persist to db
 	message := Message{}
 	message.SenderControllerID = senderControllerID
