@@ -21,7 +21,7 @@ func (s SocketSender) register(wsConn *WebSocketConnection) {
 func (s SocketSender) send(wsConn *WebSocketConnection, message Message) {
 	err := wsConn.WS.WriteJSON(message)
 	if err != nil {
-		if wsConn.ControllerID > 0 {
+		if wsConn.ControllerID.Valid {
 			log.Printf("send error to controller ID: %v", wsConn.ControllerID)
 		} else {
 			log.Printf("send error")
@@ -69,7 +69,7 @@ func (s SocketSender) run() {
 					messageStruct.Parameters = message.Parameters
 					s.send(wsConn, messageStruct)
 					if debugMode == true {
-						if wsConn.ControllerID > 0 {
+						if wsConn.ControllerID.Valid {
 							log.Printf("sending message to controller; type: %v", message.Type)
 						} else {
 							log.Printf("sending message to browser; type: %v", message.Type)
@@ -84,11 +84,11 @@ func (s SocketSender) run() {
 
 // returns True if the given message should be sent to the given client (based on its current subscriptions)
 func ClientIsSubscribed(message Message, wsConn *WebSocketConnection) bool {
-	if message.SenderControllerID > 0 {
-		if (wsConn.ControllerID > 0) && message.SenderControllerID == wsConn.ControllerID {
+	if message.SenderControllerID.Valid {
+		if (wsConn.ControllerID.Valid) && message.SenderControllerID == wsConn.ControllerID {
 			return false
 		}
-		if (wsConn.UserID > 0) && message.SenderUserID == wsConn.UserID {
+		if (wsConn.UserID.Valid) && message.SenderUserID == wsConn.UserID {
 			return false
 		}
 	}
